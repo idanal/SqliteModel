@@ -486,4 +486,8 @@ done:
     
 }
 
+- (NSString *)description{
+    return [NSString stringWithFormat:@"<%@ rowid=%@ ...>", self.class, self.rowid];
+}
+
 @end

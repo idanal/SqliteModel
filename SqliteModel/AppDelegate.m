@@ -37,7 +37,19 @@
         [u save];
     }
     
+    if ([User count:@"age > 0"].integerValue < 3){
+        for (int i = 0; i < 3; i++){
+            User *u = [User new];
+            u.name = [NSString stringWithFormat:@"user_%02d", i];
+            u.age = 20+i;
+            [u save];
+        }
+    }
+    
     list = [User findAll];
+    NSLog(@"%@", list);
+    
+    list = [User find:@"age > 0 order by rowid desc limit 1"];
     NSLog(@"%@", list);
     
     return YES;
