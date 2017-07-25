@@ -1,5 +1,5 @@
 //
-//  SQLiteDAO.m
+//  SQLiteModel.m
 //  
 //
 //  Created by danal on 8/13/15.
@@ -104,15 +104,17 @@ static SQLite *__sqlite = nil;
     [fm createDirectoryAtPath:destPath withIntermediateDirectories:YES attributes:nil error:nil];
     destPath = [destPath stringByAppendingPathComponent:filename];
     
-    //修改日期作为版本号
-    NSDictionary *attrs  = [fm attributesOfItemAtPath:srcPath error:nil];
-    NSString *latestModify = attrs[@"NSFileModificationDate"];
     
     if (![fm fileExistsAtPath:destPath]){
         [fm copyItemAtPath:srcPath toPath:destPath error:nil];
+        
+        //Save date as the db data version
+        NSDictionary *attrs  = [fm attributesOfItemAtPath:srcPath error:nil];
+        NSString *latestModify = attrs[@"NSFileModificationDate"];
+        [[NSUserDefaults standardUserDefaults] setObject:latestModify forKey:NSStringFromClass(self.class)];
+        [[NSUserDefaults standardUserDefaults] synchronize];
     }
-    //todo
-    //latestModify
+    
     SQL_LOG(@"Dest db path: %@",destPath);
     return destPath;
 }
@@ -196,7 +198,7 @@ static SQLite *__sqlite = nil;
 + (void)iterateProperties:(id)obj onIterate:(void (^)(NSString *prop, NSString *propType))onIterate{
     Class cls = [obj class];
     while (cls) {
-        if ([NSStringFromClass(cls) isEqualToString:@"SQLiteDAO"]) break;
+        if ([NSStringFromClass(cls) isEqualToString:@"SQLiteModel"]) break;
         
         unsigned int n = 0;
         const char *name, *type;
@@ -431,11 +433,9 @@ done:
         id val = [self valueForKey:prop];
         if (val == nil){
             [values appendString:@"null,"];
-        } else if ([type containsString:NSStringFromClass(NSNumber.class)]){
-            [values appendFormat:@"%@,", val];
         } else if ([type containsString:NSStringFromClass(NSString.class)]){
             [values appendFormat:@"'%@',", val];
-        } else {    //unsupport types
+        } else {    //number or other unsupport types
             [values appendFormat:@"%@,", val];
         }
     }];
@@ -461,17 +461,15 @@ done:
         id val = [self valueForKey:key];
         if (val == nil){
             [values appendFormat:@" `%@` = null,", key];
-        } else if ([type containsString:NSStringFromClass(NSNumber.class)]){
-            [values appendFormat:@" `%@` = %@,", key, val];
         } else if ([type containsString:NSStringFromClass(NSString.class)]){
             [values appendFormat:@" `%@` = '%@',", key, val];
-        } else {    //unsupport types
+        } else {    //number or other unsupport types
             [values appendFormat:@" `%@` = %@,", key, val];
         }
     
     }];
-    
     if (values.length > 0){
+        //Remove the last ','
         [values deleteCharactersInRange:NSMakeRange(values.length-1, 1)];
     }
     
